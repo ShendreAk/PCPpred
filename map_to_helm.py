@@ -15,24 +15,25 @@ map_to_helm_dict = df1.set_index('MAP_denotion')['Symbol'].sort_index(ascending=
 
 ##MAP to HELM sequence
 def process_HELM_seq(helm_seq, ID):
-    
-    start = helm_seq.index('{')
-    end = helm_seq.index('}')
-    cyc_seq = helm_seq[start:end]
-    seq_len = len(helm_seq[end+1:].split('.'))
-    cyc_list = cyc_seq.split('-')
-    start_pos = cyc_list[0][-1]
-    end_pos = cyc_list[1]
-
-    if start_pos == 'N' and end_pos == 'C':
-        return f'PEPTIDE{ID}{{{helm_seq[end+1:]}}}$PEPTIDE{ID},PEPTIDE{ID},1:R1-{seq_len}:R2$$$'
-    elif start_pos != '1' and end_pos == str(seq_len):
-        return f'PEPTIDE{ID}{{{helm_seq[end+1:]}}}$PEPTIDE{ID},PEPTIDE{ID},{start_pos}:R3-{seq_len}:R2$$$'
-    elif start_pos == '1' and end_pos != str(seq_len):
-        return f'PEPTIDE{ID}{{{helm_seq[end+1:]}}}$PEPTIDE{ID},PEPTIDE{ID},1:R1-{end_pos}:R3$$$'
+    if '{' in helm_seq:
+        start = helm_seq.index('{')
+        end = helm_seq.index('}')
+        cyc_seq = helm_seq[start:end]
+        seq_len = len(helm_seq[end+1:].split('.'))
+        cyc_list = cyc_seq.split('-')
+        start_pos = cyc_list[0][-1]
+        end_pos = cyc_list[1]
+       
+        if start_pos == 'N' and end_pos == 'C':
+            return f'PEPTIDE{ID}{{{helm_seq[end+1:]}}}$PEPTIDE{ID},PEPTIDE{ID},1:R1-{seq_len}:R2$$$'
+        elif start_pos != '1' and end_pos == str(seq_len):
+            return f'PEPTIDE{ID}{{{helm_seq[end+1:]}}}$PEPTIDE{ID},PEPTIDE{ID},{start_pos}:R3-{seq_len}:R2$$$'
+        elif start_pos == '1' and end_pos != str(seq_len):
+            return f'PEPTIDE{ID}{{{helm_seq[end+1:]}}}$PEPTIDE{ID},PEPTIDE{ID},1:R1-{end_pos}:R3$$$'
+        else:
+            return f'PEPTIDE{ID}{{{helm_seq[end+1:]}}}$PEPTIDE{ID},PEPTIDE{ID},{start_pos}:R3-{end_pos}:R3$$$'
     else:
-        return f'PEPTIDE{ID}{{{helm_seq[end+1:]}}}$PEPTIDE{ID},PEPTIDE{ID},{start_pos}:R3-{end_pos}:R3$$$'
-
+        return f'PEPTIDE{ID}{{{helm_seq}}}$$$$'
 def convert_map_to_helm_sequence(map_str, ID):
     nterm_pattern = r'\{nt:[^}]+\}'
     cyc_pattern = r'\{cyc:\s*([N]|\d+)-([C]|\d+)\}'
@@ -42,7 +43,10 @@ def convert_map_to_helm_sequence(map_str, ID):
     cyc_string = re.search(cyc_pattern, map_str)
     # print("cyc_string",cyc_string[0])
     map_str = re.sub(cyc_pattern, '', map_str)
-    string += ''.join(cyc_string[0]) + ''.join(nterm_modifications) + map_str
+    if cyc_string:
+        string += ''.join(cyc_string[0]) + ''.join(nterm_modifications) + map_str
+    else:
+        string += ''.join(nterm_modifications) + map_str
 
     tokens = []
     i = 0
@@ -69,6 +73,7 @@ def convert_map_to_helm_sequence(map_str, ID):
             tokens.append(string[i])
             i += 1
     helm_seq = ''.join(tokens).rstrip('.')
+    # print(helm_seq)
     return helm_seq
 
 def main():
